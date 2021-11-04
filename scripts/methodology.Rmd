@@ -95,7 +95,7 @@ sources_df <- data.frame("Indicator" = c("Good level of development",
 )
 
 
-sources_df %>% kable("simple",col.names = c("Indicator","Source", "Date", "Source link")) %>%
+sources_df %>% kable(col.names = c("Indicator","Source", "Date", "Source link")) %>%
   kable_styling(full_width = FALSE)
 ```
 
@@ -693,7 +693,7 @@ df_3 <- df %>%
   )
 df_3 <- df_3[order(-c(df_3$OR)),]
 
-df_3 %>% kable("simple", escape = F, row.names = F, col.names = linebreak(c("Indicator", "Odds Ratio", "Lower confidence interval (95%)", "Upper confidence interval (95%)")), caption = "Odds ratios and confidence intervals corresponding to the above plot") %>% kable_styling(full_width = F)
+df_3 %>% kable(escape = F, row.names = F, col.names = linebreak(c("Indicator", "Odds Ratio", "Lower confidence<br>interval (95%)", "Upper confidence<br>interval (95%)")), caption = "Odds ratios and confidence intervals corresponding to the above plot") %>% kable_styling(full_width = F)
 ```
 
 ## Haringey
@@ -1193,7 +1193,7 @@ df_3 <- df %>%
   )
 df_3 <- df_3[order(-c(df_3$OR)),]
 
-df_3 %>% kable("simple", escape = F, row.names = F, col.names = linebreak(c("Indicator", "Odds Ratio", "Lower confidence interval (95%)", "Upper confidence interval (95%)")), caption = "Odds ratios and confidence intervals corresponding to the above plot") %>% kable_styling(full_width = F)
+df_3 %>% kable(escape = F, row.names = F, col.names = linebreak(c("Indicator", "Odds Ratio", "Lower confidence<br>interval (95%)", "Upper confidence<br>interval (95%)")), caption = "Odds ratios and confidence intervals corresponding to the above plot") %>% kable_styling(full_width = F)
 ```
 
 # Limitations
