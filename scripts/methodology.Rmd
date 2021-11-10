@@ -39,14 +39,13 @@ This document provides a description of the procedures undertaken to produce the
 # R packages used
 
 ```{r packages, class.source = "fold-show"}
-library(kableExtra)
-library(ukpolice)
-library(leaflet)
-library(mapview)
-library(gmodels)
 library(tidyverse)
-library(epitools)
-library(forcats)
+library(kableExtra) # for tables
+library(leaflet) # for mapping
+library(mapview) # for saving maps
+library(gmodels) # for CrossTable
+library(epitools) # for riskratio
+library(forcats) # for factor reduction
 ```
 
 
@@ -301,7 +300,7 @@ self_defined_freq_data <- data %>%
 self_perc_recorded <- 100 - self_defined_freq_data$percentage[which(self_defined_freq_data$self_defined_ethnicity == "NULL")]
 ```
 
-It was not appropriate to use officer-defined ethnicity for the Birmingham dataset because for `r round(appearance_freq_data$percentage[which(appearance_freq_data$officer_defined_ethnicity == "NULL")],2)`% of records this data was not reported (see the tables below). In contrast, self-defined ethnicity (*self_defined_ethnicity*) was reported for `r round(self_perc_recorded,2)`% of records, so this variable was used as the ethnicity variable in the present analysis.
+It was not appropriate to use officer-defined ethnicity (variable name *officer_defined_ethnicity*) for the Birmingham dataset because for `r round(appearance_freq_data$percentage[which(appearance_freq_data$officer_defined_ethnicity == "NULL")],2)`% of records this data was not reported (see the tables below). In contrast, self-defined ethnicity (*self_defined_ethnicity*) was reported for `r round(self_perc_recorded,2)`% of records, so this variable was used as the ethnicity variable in the present analysis.
 
 ### Officer-defined ethnicity count
 
@@ -323,7 +322,26 @@ This indicator describes the number of households who are owed prevention or rel
 
 # Analysis and Results
 
-Chi-square and Fisher exact tests were used to analyse the data. For each indicator, a crosstabulation was created containing the frequency of Black and White individuals for which the indicator outcome was true and the frequency for which it was false. This crosstabulation was then used to test whether the odds of the indicator outcome were significantly different for the Black population compared to the White population. This was done using  the *CrossTable* function from the *gmodels* package in R. This function provides statistics for the Chi-square and Fisher exact tests as well an estimate of the odds ratio and its confidence interval. Finally, relative risk ratios were also produced using the *riskratio* function from the *epitools* package.
+Chi-square and Fisher exact tests were used to analyse the data. For each indicator, a crosstabulation was created containing the frequency of Black and White individuals for which the indicator outcome was true and the frequency for which it was false. This crosstabulation was then used to test whether the odds of the indicator outcome were significantly different for the Black population compared to the White population. This was done using  the *CrossTable* function from the *gmodels* package in R. This function provides statistics for the Chi-square and Fisher exact tests as well an estimate of the odds ratio and its confidence interval. 
+
+A further step was taken to produce relative risk ratios for the public-facing dashboards. Relative risk ratios tend to be more intuitive to interpret for non-statisticians because the value presents relative increases or decreases in the *likelihood* of an outcome rather than in the *odds* of an outcome. Although odds ratios tend to approximate relative risk ratios when an outcome is uncommon (< 10%) in the comparator group (i.e., the White population), when the outcome is common (> 10%) in the comparator group  odds ratios tend to exaggerate relative risk ratios [@davies_when_1998]. Relative risk ratios were calculated using the *riskratio* function from the *epitools* package in a custom function. This function restructures the data for each indicator in the format required for *riskratio* and then produces a relative risk ratio and its 95% confidence interval.
+
+```{r include = TRUE, echo = TRUE}
+rr_from_df <- function(df, name){
+  # function takes dfs made earlier, transforms in matrices, and creates risk
+  # ratios and associated confidence intervals
+  # 'name' is the name of the indicator
+  mat <- matrix(c(df[2,2],
+                  df[2,1],
+                  df[1,2],
+                  df[1,1]), 2, 2)
+  df_out <- data.frame("indicator" = name,
+                     "rr" = riskratio(mat)[["measure"]][2,1],
+                     "ci_low" = riskratio(mat)[["measure"]][2,2],
+                     "ci_upp" = riskratio(mat)[["measure"]][2,3])
+  return(df_out)
+}
+```
 
 The results of this procedure for Birmingham and Haringey are presented below. For each indicator, the code for preparing and analysing the data is provided, followed by a written report of the findings.
 
@@ -349,13 +367,15 @@ white <- data.frame("white" = c("gld_number" = total_data["White", "gld_number"]
 
 bw_mat <- as.matrix(cbind(black, white)) # combine black and white into one matrix
 gld_df <- as.data.frame(bw_mat) # save df
+
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T) # save xtab
+rr <- rr_from_df(gld_df, "Good level of development at age 5 (2018-2019)") # get risk ratio
 ```
 
 
 ```{r echo = FALSE}
 xtab_gld <- xtab # save for later
-
+rr_gld <- rr
 # change p value for output
 p <- xtab[["chisq"]][["p.value"]]
 if(p < .001){
@@ -412,14 +432,16 @@ black <- data.frame("black" = c("gcse" = total_data["Black", "total_4_plus"], "n
 white <- data.frame("white" = c("gcse" = total_data["White", "total_4_plus"], "not_gcse" = total_data["White", "not_gcse"]))
 bw_mat <- as.matrix(cbind(black, white))
 gcse_df <- as.data.frame(bw_mat) # save df
+
 # run stats
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
+rr <- rr_from_df(gcse_df, "Level 4+ GCSE Maths & English (2018-2019)") # get risk ratio
 ```
 
 
 ```{r echo = FALSE}
 xtab_gcse <- xtab # save for later
-
+rr_gcse <- rr
 # change p value for output
 p <- xtab[["chisq"]][["p.value"]]
 if(p < .001){
@@ -429,7 +451,7 @@ if(p < .001){
 }
 ```
 
-The results indicate that in the 2019-2020 academic year, there was a significant difference between Black pupils and White pupils in the odds of achieving at least a Level 4 in GCSE Maths and English, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of a Black pupil achieving at least Level 4 in Maths and English were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds for a White pupil (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2], 2)`).The plot below shows that `r round(total_data["Black","percent_4_plus"],2)`% of Black pupils achieved at least Level 4 in English and Maths, compared to `r round(total_data["White","percent_4_plus"],2)`% of White pupils.
+The results indicate that in the 2019-2020 academic year, there was a significant difference between Black pupils and White pupils in the odds of achieving at least a Level 4 in GCSE Maths and English, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of a Black pupil achieving at least Level 4 in Maths and English were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds for a White pupil (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2], 2)`). The relative risk ratio for Black pupils compared to White pupils was `r round(rr$rr,2)` (95% CI = `r round(rr$ci_low,2)` - `r round(rr$ci_upp,2)`), indicating that Black pupils were `r round(100 * (1 - rr$rr), 2)`% less likely than White pupils to achieve at least Level 4 in GCSE Maths and English. The plot below shows that `r round(total_data["Black","percent_4_plus"],2)`% of Black pupils achieved at least Level 4 in English and Maths, compared to `r round(total_data["White","percent_4_plus"],2)`% of White pupils.
 
 ```{r echo = FALSE}
 ggplot(total_data, aes(ethnicity, percent_4_plus)) + 
@@ -466,14 +488,16 @@ black <- data.frame("black" = c("cla" = total_data["Black", "cla"], "not_cla" = 
 white <- data.frame("white" = c("cla" = total_data["White", "cla"], "not_cla" = total_data["White", "not_cla"]))
 bw_mat <- as.matrix(cbind(black, white))
 cla_df <- as.data.frame(bw_mat) # save df
+
 # run analysis
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
+rr <- rr_from_df(cla_df, "Children looked after by local authority (2018-2019)") # risk ratio
 ```
 
 
 ```{r echo = FALSE}
 xtab_cla <- xtab # save for later
-
+rr_cla <- rr
 # change p value for output
 p <- xtab[["chisq"]][["p.value"]]
 if(p < .001){
@@ -531,11 +555,13 @@ employment_df <- as.data.frame(bw_mat) # save df
 # run analysis
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
 #chisq.test(bw_mat) double check result with chisq.test function
+rr <- rr_from_df(employment_df, "Employment rate (2020-2021)") # risk ratio
 ```
 
 
 ```{r echo = FALSE}
 xtab_employment <- xtab # save for later
+rr_employment <- rr
 # change p value for output
 p <- xtab[["chisq"]][["p.value"]]
 if(p < .001){
@@ -545,7 +571,7 @@ if(p < .001){
 }
 ```
 
-The results indicate that in the 12 months to March 2021, there was a significant difference between Black and White 16-64 year olds in the odds of being employed, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of Black 16-64 year olds being employed were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds of White 16-64 year olds being employed (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2], 2)`). The plot below shows that `r round(total_data["black","percentage"],2)`% of Black 16-64 year olds were employed in the 12 months to March 2021, compared to `r round(total_data["white","percentage"],2)`% of White 16-64 year olds. 
+The results indicate that in the 12 months to March 2021, there was a significant difference between Black and White 16-64 year olds in the odds of being employed, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of Black 16-64 year olds being employed were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds of White 16-64 year olds being employed (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2], 2)`). The relative risk ratio for Black individuals compared to White individuals was `r round(rr$rr,2)` (95% CI = `r round(rr$ci_low,2)` - `r round(rr$ci_upp,2)`), indicating that Black 16-64 year olds were `r round(100 * (1 - rr$rr), 2)`% less likely than White 16-64 year olds to be in employment. The plot below shows that `r round(total_data["black","percentage"],2)`% of Black 16-64 year olds were employed in the 12 months to March 2021, compared to `r round(total_data["white","percentage"],2)`% of White 16-64 year olds. 
 
 ```{r echo = FALSE}
 plot_data <- subset(total_data, ethnicity == "black" | ethnicity == "white")
@@ -629,12 +655,13 @@ bw_mat <- as.matrix(cbind(black, white))
 stop_search_df <- as.data.frame(bw_mat) # save df
 # run analysis
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
+rr <- rr_from_df(stop_search_df, "Police Stop and Search (2020-2021)") # risk ratio
 ```
 
 
 ```{r echo = FALSE}
 xtab_stop_search <- xtab # save for later
-
+rr_stop_search <- rr
 # change p value for output
 p <- xtab[["chisq"]][["p.value"]]
 if(p < .001){
@@ -644,7 +671,7 @@ if(p < .001){
 }
 ```
 
-The results indicate that in the 12 months to August 2021, there was a significant difference between Black and White individuals in the odds of being stopped and searched by Police, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of a Black individual being stopped and searched by police were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds of a White individual being stopped and searched (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2], 2)`). The plot below shows that `r round(self_defined_freq_data["Black","percentage"],2)`% of Black individuals in Birmingham were subject to Police Stop and Search, compared to `r round(self_defined_freq_data["White","percentage"],2)`% of White individuals. 
+The results indicate that in the 12 months to August 2021, there was a significant difference between Black and White individuals in the odds of being stopped and searched by Police, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of a Black individual being stopped and searched by police were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds of a White individual being stopped and searched (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2], 2)`). The relative risk ratio for Black individuals compared to White individuals was `r round(rr$rr,2)` (95% CI = `r round(rr$ci_low,2)` - `r round(rr$ci_upp,2)`), indicating that Black individuals were `r round(100 * (rr$rr), 0) - 100`% (i.e., `r round(rr$rr,2)` times) more likely than White individuals to be stopped and searched by Police. The plot below shows that `r round(self_defined_freq_data["Black","percentage"],2)`% of Black individuals in Birmingham were subject to Police Stop and Search, compared to `r round(self_defined_freq_data["White","percentage"],2)`% of White individuals. 
 
 ```{r echo = FALSE}
 plot_data <- subset(self_defined_freq_data, ethnicity == "Black" | ethnicity == "White")
@@ -697,12 +724,13 @@ bw_mat <- as.matrix(cbind(black, white))
 homeless_df <- as.data.frame(bw_mat) # save df
 # run analysis
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
+rr <- rr_from_df(homeless_df, "Statutorily homeless or at risk (2020-2021)") # risk ratio
 ```
 
 
 ```{r echo = FALSE}
 xtab_homelessness <- xtab # save for later
-
+rr_homeless <- rr
 # change p value for output
 p <- xtab[["chisq"]][["p.value"]]
 if(p < .001){
@@ -712,7 +740,7 @@ if(p < .001){
 }
 ```
 
-The results indicate that in the 2020-2021 financial year, there was a significant difference in the odds of being homeless or at risk of being homeless between Black and White households, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of a Black household being owed prevention or relief duty were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds for a White household (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2],2)`). The plot below shows that `r round(total_data["Black","percentage"],2)`% of Black households in Birmingham were homeless or at risk of becoming homeless, compared to `r round(total_data["White","percentage"],2)`% of White households.
+The results indicate that in the 2020-2021 financial year, there was a significant difference in the odds of being homeless or at risk of being homeless between Black and White households, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of a Black household being owed prevention or relief duty were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds for a White household (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2],2)`). The relative risk ratio for Black households compared to White households was `r round(rr$rr,2)` (95% CI = `r round(rr$ci_low,2)` - `r round(rr$ci_upp,2)`), indicating that Black households were `r round(100 * (rr$rr), 0) - 100`% (i.e., `r round(rr$rr,2)` times) more likely than White households to be statutorily homeless or at risk of being so. The plot below shows that `r round(total_data["Black","percentage"],2)`% of Black households in Birmingham were homeless or at risk of becoming homeless, compared to `r round(total_data["White","percentage"],2)`% of White households.
 
 ```{r echo = FALSE}
 plot_data <- subset(total_data, ethnicity == "Black" | ethnicity == "White")
@@ -729,7 +757,7 @@ ggplot(plot_data, aes(ethnicity, percentage)) +
   xlab("Ethnicity") + ylab("Percentage of households homeless \n or at risk of being homeless")
 ```
 
-### Summary
+### Summary {.tabset}
 
 ```{r include = TRUE, echo = FALSE}
 df <- data.frame("indicator" = c("Employment (2020-2021)", 
@@ -761,14 +789,35 @@ df <- data.frame("indicator" = c("Employment (2020-2021)",
                    xtab_homelessness[["fisher.ts"]][["conf.int"]][[2]],
                    xtab_stop_search[["fisher.ts"]][["conf.int"]][[2]],
                    xtab_cla[["fisher.ts"]][["conf.int"]][[2]]
-                 )
+                 ),
+                 "short_name" = c("employment",
+                                  "gcse",
+                                  "gld",
+                                  "homeless",
+                                  "stop_search",
+                                  "cla")
 )
 
+rr_df <- rbind(rr_gld,
+               rr_gcse,
+               rr_employment,
+               rr_homeless,
+               rr_stop_search,
+               rr_cla)
+rr_df$short_name <- c("gld",
+                      "gcse",
+                      "employment",
+                      "homeless",
+                      "stop_search",
+                      "cla")
 ```
 
-The analyses presented highlight four areas where the Black population of Birmingham experience worse outcomes than the White population. The odds of achieving Level 4 in GCSE Maths and English and of being employed are lower for Black people compared to White people. The odds of a Black household being homeless or at risk of being homeless are three times greater than the odds for a White household, and the odds of a Black individual being subject to Police Stop and Search are nearly three times greater than the odds for a White individual.
+The analyses presented highlight four areas where the Black population of Birmingham experience worse outcomes than the White population. 
+The odds of being employed for Black people are `r round(df$OR[which(df$short_name == "employment")],2)` times the odds for White people, meaning that Black people are `r round(100 * (1 - rr_df$rr[which(rr_df$short_name == "employment")]), 2)`% less likely than White people to be in employment. The odds of Black pupils achieving at least Level 4 in GCSE Maths and English are `r round(df$OR[which(df$short_name == "gcse")],2)` times the odds for White pupils, meaning that Black pupils are `r round(100 * (1 - rr_df$rr[which(rr_df$short_name == "gcse")]), 2)`% less likely than White pupils to achieve at least Level 4 in GCSE Maths and English. The odds of a Black individual being subject to Police Stop and Search are `r round(df$OR[which(df$short_name == "stop_search")],2)` times greater than the odds for a White individual, meaning that Black individuals are `r round(100 * rr_df$rr[which(rr_df$short_name == "stop_search")],0) - 100`% (i.e., `r round(rr_df$rr[which(rr_df$short_name == "stop_search")], 2)` times) more likely than White individuals to be stopped and searched by Police. The odds of Black households being statutorily homeless or at risk of becoming homeless are `r round(df$OR[which(df$short_name == "homeless")],2)` times greater than the odds for a White households, meaning that White households are `r round(100 * rr_df$rr[which(rr_df$short_name == "homeless")],0) - 100`% (i.e., `r round(rr_df$rr[which(rr_df$short_name == "homeless")], 2)` times) more likely than White households to be homeless or at risk of becoming homeless. Finally, there appears to be no difference between Black and White children in the odds of being looked after by the local authority or of achieving a Good Level of Development at age 5.
 
-In contrast, there appears to be no difference between Black and White children in the odds of being looked after by the local authority or of achieving a Good Level of Development at age 5.
+The figures and tables below visualise these results both in terms of odds ratios and relative risk ratios.
+
+#### Odds ratios
 
 ```{r include = TRUE, echo = FALSE}
 # better plot, test rescaling below 1, horizontal orientation , without caption
@@ -837,7 +886,7 @@ ggplot(df_2, aes(indicator, OR)) +
 ```{r include = TRUE, echo = FALSE}
 # table with ORS and CIS
 
-df_3 <- df %>%
+df_3 <- df[,-c(ncol(df))] %>%
   mutate(
     OR = round(OR, 2),
     ci_low = round(ci_low, 2),
@@ -945,41 +994,6 @@ df_3 %>% kable(escape = F, row.names = F, col.names = linebreak(c("Indicator", "
 
 #### Relative risk ratios
 
-A further step was taken to produce public-facing results for the dashboards that are more straightforward to interpret. This was done by calculating relative risk ratios instead of odds ratios, using the *riskratio* function from the *epitools* package. Risk ratios tend to be more intuitive to interpret for non-statisticians because the value presents relative increases or decreases in the *likelihood* of an outcome rather than in the *odds* of an outcome. Although odds ratios tend to approximate relative risk ratios when an outcome is uncommon in the comparator group (< 10%), when the outcome is common in the comparator group (> 10%) odds ratios tend to exaggerate relative risk ratios [@davies_when_1998].
-
-```{r include = TRUE, echo = TRUE}
-rr_from_df <- function(df, name){
-  # function takes dfs made earlier, transforms in matrices, and creates risk
-  # ratios and associated confidence intervals
-  # 'name' is the name of the indicator
-  mat <- matrix(c(df[2,2],
-                  df[2,1],
-                  df[1,2],
-                  df[1,1]), 2, 2)
-  df_out <- data.frame("indicator" = name,
-                     "rr" = riskratio(mat)[["measure"]][2,1],
-                     "ci_low" = riskratio(mat)[["measure"]][2,2],
-                     "ci_upp" = riskratio(mat)[["measure"]][2,3])
-  return(df_out)
-}
-
-rr_gld <- rr_from_df(gld_df, "Good level of development at age 5 (2018-2019)")
-rr_gcse <- rr_from_df(gcse_df, "Level 4+ GCSE Maths & English (2018-2019)")
-rr_employment <- rr_from_df(employment_df, "Employment rate (2020-2021)")
-rr_homeless <- rr_from_df(homeless_df, "Statutorily homeless or at risk (2020-2021)")
-rr_stop_search <- rr_from_df(stop_search_df, "Police Stop and Search (2020-2021)")
-rr_cla <- rr_from_df(cla_df, "Children looked after by local authority (2018-2019)")
-
-rr_df <- rbind(rr_gld,
-               rr_gcse,
-               rr_employment,
-               rr_homeless,
-               rr_stop_search,
-               rr_cla)
-```
-
-This procedure yielded the statistics presented in the figure and table below.
-
 ```{r rr_plot, include = TRUE, echo = FALSE}
 # test rescaling below 1, hrrizontal orientation , without caption
 bt_orange <- "#ff9000"
@@ -1050,7 +1064,7 @@ ggplot(rr_df_2, aes(indicator, rr)) +
 ```{r include = TRUE, echo = FALSE}
 # table with rrS and CIS
 
-rr_df_3 <- rr_df %>%
+rr_df_3 <- rr_df[,-c(ncol(rr_df))] %>%
   mutate(
     rr = round(rr, 2),
     ci_low = round(ci_low, 2),
@@ -1060,7 +1074,7 @@ rr_df_3 <- rr_df_3[order(-c(rr_df_3$rr)),]
 
 rr_df_3 %>% kable("html", 
                   escape = F, 
-                  row.names = F, col.names = linebreak(c("Indicator", "Relative risk", "Lower confidence interval (95%)", "Upper confidence interval (95%)")), caption = "Relative risk and confidence intervals corresponding to the above plot") %>% kable_styling(full_width = F)
+                  row.names = F, col.names = linebreak(c("Indicator", "Relative risk ratio", "Lower confidence<br>interval (95%)", "Upper confidence<br>interval (95%)")), caption = "Relative risk ratios and confidence intervals corresponding to the above plot") %>% kable_styling(full_width = F)
 
 ```
 
@@ -1090,12 +1104,13 @@ bw_mat <- as.matrix(cbind(black, white)) # combine black and white into one matr
 gld_df <- as.data.frame(bw_mat) # save df
 
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T) # save xtab
+rr <- rr_from_df(gld_df, "Good level of development at age 5 (2018-2019)") # risk ratio
 ```
 
 
 ```{r echo = FALSE}
 xtab_gld <- xtab # save for later
-
+rr_gld <- rr
 # change p value for output
 p <- xtab[["chisq"]][["p.value"]]
 if(p < .001){
@@ -1105,7 +1120,7 @@ if(p < .001){
 }
 ```
 
-The results indicate that in Haringey there was a significant difference between Black children and White children in the odds of achieving a Good Level of Development at age 5, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of a Black child reaching a Good Level of Development were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds for a White child (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2], 2)`).The plot below shows that `r round(total_data["Black","gld_percent"],2)`% of Black children and `r round(total_data["White","gld_percent"],2)`% of White children reached a Good Level of Development in 2018-2019.
+The results indicate that in Haringey there was a significant difference between Black children and White children in the odds of achieving a Good Level of Development at age 5, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of a Black child reaching a Good Level of Development were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds for a White child (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2], 2)`). The relative risk ratio for Black children compared to White children was `r round(rr$rr,2)` (95% CI = `r round(rr$ci_low,2)` - `r round(rr$ci_upp,2)`), indicating that Black children were `r round(100 * (1 - rr$rr), 2)`% less likely than White children to reach a Good Level of Development at age 5. The plot below shows that `r round(total_data["Black","gld_percent"],2)`% of Black children and `r round(total_data["White","gld_percent"],2)`% of White children reached a Good Level of Development in 2018-2019.
 
 ```{r echo = FALSE}
 plot_data <- subset(total_data, characteristic_type == "Black" | characteristic_type == "White")
@@ -1158,12 +1173,13 @@ gcse_df <- as.data.frame(bw_mat) # save df
 
 # run stats
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
+rr <- rr_from_df(gcse_df, "Level 4+ GCSE Maths & English (2018-2019)") # risk ratio
 ```
 
 
 ```{r echo = FALSE}
 xtab_gcse <- xtab # save for later
-
+rr_gcse <- rr
 # change p value for output
 p <- xtab[["chisq"]][["p.value"]]
 if(p < .001){
@@ -1212,12 +1228,13 @@ cla_df <- as.data.frame(bw_mat) # save df
 
 # run analysis
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
+rr <- rr_from_df(cla_df, "Children looked after by local authority (2018-2019)") # risk ratio
 ```
 
 
 ```{r echo = FALSE}
 xtab_cla <- xtab # save for later
-
+rr_cla <- rr
 # change p value for output
 p <- xtab[["chisq"]][["p.value"]]
 if(p < .001){
@@ -1227,7 +1244,8 @@ if(p < .001){
 }
 ```
 
-The results indicate that, in the 2018-2019 financial year, there was a significant relationship between child ethnicity and the odds of being looked after the local authority, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of Black children being looked after by the local authority were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds for White children (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2], 2)`).The plot below shows that `r round(total_data["Black","percentage"],2)`% of Black children, compared to `r round(total_data["White","percentage"],2)`% of White children, were looked after by the local authority in the 2018-2019 financial year.
+The results indicate that, in the 2018-2019 financial year, there was a significant relationship between child ethnicity and the odds of being looked after the local authority, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of Black children being looked after by the local authority were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds for White children (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2], 2)`). The relative risk ratio for Black children compared to White children was `r round(rr$rr,2)` (95% CI = `r round(rr$ci_low,2)` - `r round(rr$ci_upp,2)`), indicating that Black children were `r round(100 * (rr$rr), 0) - 100`% (i.e., `r round(rr$rr,2)` times) more likely than White children to be looked after by the local authority. The plot below shows that `r round(total_data["Black","percentage"],2)`% of Black children, compared to `r round(total_data["White","percentage"],2)`% of White children, were looked after by the local authority in the 2018-2019 financial year.
+
 
 ```{r echo = FALSE}
 ggplot(total_data, aes(ethnicity, percentage)) +
@@ -1272,11 +1290,13 @@ employment_df <- as.data.frame(bw_mat) # save df
 
 # run analysis
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
+rr <- rr_from_df(employment_df, "Employment rate (2020-2021)") # risk ratio
 ```
 
 
 ```{r echo = FALSE}
 xtab_employment <- xtab # save for later
+rr_employment <- rr
 # change p value for output
 p <- xtab[["chisq"]][["p.value"]]
 if(p < .001){
@@ -1286,7 +1306,7 @@ if(p < .001){
 }
 ```
 
-The results indicate that in the 12 months to March 2021, there was a significant difference between Black and White 16-64 year olds in the odds of being employed, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of Black 16-64 year olds being employed were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds of White 16-64 year olds being employed (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2], 2)`). The plot below shows that `r round(total_data["black","percentage"],2)`% of Black 16-64 year olds were employed in the 12 months to March 2021, compared to `r round(total_data["white","percentage"],2)`% of White 16-64 year olds. 
+The results indicate that in the 12 months to March 2021, there was a significant difference between Black and White 16-64 year olds in the odds of being employed, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of Black 16-64 year olds being employed were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds of White 16-64 year olds being employed (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2], 2)`). The relative risk ratio for Black individuals compared to White individuals was `r round(rr$rr,2)` (95% CI = `r round(rr$ci_low,2)` - `r round(rr$ci_upp,2)`), indicating that Black 16-64 year olds were `r round(100 * (1 - rr$rr), 2)`% less likely than White 16-64 year olds to be in employment. The plot below shows that `r round(total_data["black","percentage"],2)`% of Black 16-64 year olds were employed in the 12 months to March 2021, compared to `r round(total_data["white","percentage"],2)`% of White 16-64 year olds. 
 
 ```{r echo = FALSE}
 total_data$ethnicity <- c("White","Black")
@@ -1343,12 +1363,13 @@ stop_search_df <- as.data.frame(bw_mat) # save df
 
 # run analysis
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
+rr <- rr_from_df(stop_search_df, "Police Stop and Search (2020-2021)")
 ```
 
 
 ```{r echo = FALSE}
 xtab_stop_search <- xtab # save for later
-
+rr_stop_search <- rr
 # change p value for output
 p <- xtab[["chisq"]][["p.value"]]
 if(p < .001){
@@ -1358,7 +1379,7 @@ if(p < .001){
 }
 ```
 
-The results indicate that in the 12 months to August 2021, there was a significant difference between Black and White individuals in the odds of being stopped and searched by Police, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of a Black individual being stopped and searched by police were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds of a White individual being stopped and searched (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2], 2)`). The plot below shows that `r round(appearance_freq_data["Black","percentage"],2)`% of Black individuals in Haringey were subject to Police Stop and Search, compared to `r round(appearance_freq_data["White","percentage"],2)`% of White individuals. 
+The results indicate that in the 12 months to August 2021, there was a significant difference between Black and White individuals in the odds of being stopped and searched by Police, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of a Black individual being stopped and searched by police were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds of a White individual being stopped and searched (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2], 2)`). The relative risk ratio for Black individuals compared to White individuals was `r round(rr$rr,2)` (95% CI = `r round(rr$ci_low,2)` - `r round(rr$ci_upp,2)`), indicating that Black individuals were `r round(100 * (rr$rr), 0) - 100`% (i.e., `r round(rr$rr,2)` times) more likely than White individuals to be stopped and searched by Police. The plot below shows that `r round(appearance_freq_data["Black","percentage"],2)`% of Black individuals in Haringey were subject to Police Stop and Search, compared to `r round(appearance_freq_data["White","percentage"],2)`% of White individuals. 
 
 ```{r echo = FALSE}
 plot_data <- subset(appearance_freq_data, ethnicity == "Black" | ethnicity == "White")
@@ -1413,12 +1434,13 @@ homeless_df <- as.data.frame(bw_mat) # save df
 
 # run analysis
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
+rr <- rr_from_df(homeless_df, "Statutorily homeless or at risk (2020-2021)") # risk ratio
 ```
 
 
 ```{r echo = FALSE}
 xtab_homelessness <- xtab # save for later
-
+rr_homeless <- rr
 # change p value for output
 p <- xtab[["chisq"]][["p.value"]]
 if(p < .001){
@@ -1428,7 +1450,7 @@ if(p < .001){
 }
 ```
 
-The results indicate that in the 2020-2021 financial year, there was a significant difference in the odds of being homeless or at risk of being homeless between Black and White households, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of a Black household being owed prevention or relief duty were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds for a White household (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2],2)`). The plot below shows that `r round(total_data["Black","percentage"],2)`% of Black households in Birmingham were homeless or at risk of becoming homeless, compared to `r round(total_data["White","percentage"],2)`% of White households.
+The results indicate that in the 2020-2021 financial year, there was a significant difference in the odds of being homeless or at risk of being homeless between Black and White households, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of a Black household being owed prevention or relief duty were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds for a White household (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2],2)`). The relative risk ratio for Black households compared to White households was `r round(rr$rr,2)` (95% CI = `r round(rr$ci_low,2)` - `r round(rr$ci_upp,2)`), indicating that Black households were `r round(100 * (rr$rr), 0) - 100`% (i.e., `r round(rr$rr,2)` times) more likely than White households to be statutorily homeless or at risk of being so. The plot below shows that `r round(total_data["Black","percentage"],2)`% of Black households in Birmingham were homeless or at risk of becoming homeless, compared to `r round(total_data["White","percentage"],2)`% of White households.
 
 ```{r echo = FALSE}
 plot_data <- subset(total_data, ethnicity == "Black" | ethnicity == "White")
@@ -1448,7 +1470,7 @@ ggplot(plot_data, aes(ethnicity, percentage)) +
   xlab("Ethnicity") + ylab("Percentage of households homeless \n or at risk of being homeless")
 ```
 
-### Summary
+### Summary {.tabset}
 
 ```{r echo = FALSE}
 df <- data.frame("indicator" = c("Employment", 
@@ -1480,11 +1502,36 @@ df <- data.frame("indicator" = c("Employment",
                    xtab_homelessness[["fisher.ts"]][["conf.int"]][[2]],
                    xtab_stop_search[["fisher.ts"]][["conf.int"]][[2]],
                    xtab_cla[["fisher.ts"]][["conf.int"]][[2]]
-                 )
+                 ),
+                 "short_name" = c("employment",
+                                  "gcse",
+                                  "gld",
+                                  "homeless",
+                                  "stop_search",
+                                  "cla")
 )
+
+rr_df <- rbind(rr_gld,
+               rr_gcse,
+               rr_employment,
+               rr_homeless,
+               rr_stop_search,
+               rr_cla)
+
+rr_df$short_name <- c("gld",
+                      "gcse",
+                      "employment",
+                      "homeless",
+                      "stop_search",
+                      "cla")
 ```
 
-The results of the analysis for Haringey indicate five areas where the Black population experience worse outcomes than the White population. Black individauls have half the odds of White individuals to be employed. Black children have lower odds of reaching a Good Level of Development at age 5 compared to White children, and the odds of Black children being looked after by the local authority are over three times greater than the odds for White children. The odds of a Black individual being stopped and searched by Police are over seven times greater than the odds for a White individual. Finally, Black households in Haringey have nearly eight times greater odds of being homeless or at risk of being homeless, compared to White households.
+The analyses presented for Haringey highlight five areas where the Black population experience worse outcomes than the White population. 
+The odds of being employed for Black people are `r round(df$OR[which(df$short_name == "employment")],2)` times the odds for White people, meaning that Black people are `r round(100 * (1 - rr_df$rr[which(rr_df$short_name == "employment")]), 2)`% less likely than White people to be in employment. The odds of Black children achieving a Good Level of Development at age 5 are `r round(df$OR[which(df$short_name == "gld")],2)` times the odds for White children, meaning that Black pupils are `r round(100 * (1 - rr_df$rr[which(rr_df$short_name == "gld")]), 2)`% less likely than White children to reach a Good Level of Development. The odds of Black children being looked after by the local authority are `r round(df$OR[which(df$short_name == "cla")],2)` times the odds for White children, meaning that Black children are `r round(100 * rr_df$rr[which(rr_df$short_name == "cla")],0) - 100`% (i.e., `r round(rr_df$rr[which(rr_df$short_name == "cla")], 2)` times) more likely than White children to be looked after by the local authority. The odds of a Black individual being subject to Police Stop and Search are `r round(df$OR[which(df$short_name == "stop_search")],2)` times greater than the odds for a White individual, meaning that Black individuals are `r round(100 * rr_df$rr[which(rr_df$short_name == "stop_search")],0) - 100`% (i.e., `r round(rr_df$rr[which(rr_df$short_name == "stop_search")], 2)` times) more likely than White individuals to be stopped and searched by Police. The odds of Black households being statutorily homeless or at risk of becoming homeless are `r round(df$OR[which(df$short_name == "homeless")],2)` times greater than the odds for a White households, meaning that White households are `r round(100 * rr_df$rr[which(rr_df$short_name == "homeless")],0) - 100`% (i.e., `r round(rr_df$rr[which(rr_df$short_name == "homeless")], 2)` times) more likely than White households to be homeless or at risk of becoming homeless. Finally, there appears to be no difference between Black and White pupils in the odds of achieving at least Level 4 in GCSE Maths and English.
+
+The figures and tables below visualise these results both in terms of odds ratios and relative risk ratios.
+
+#### Odds ratios
 
 ```{r include = TRUE, echo = FALSE}
 # better plot, test rescaling below 1, horizontal orientation , without caption
@@ -1558,7 +1605,7 @@ ggplot(df_2, aes(indicator, OR)) +
 ```{r include = TRUE, echo = FALSE}
 # table with ORS and CIS
 
-df_3 <- df %>%
+df_3 <- df[,-c(ncol(df))] %>%
   mutate(
     OR = round(OR, 2),
     ci_low = round(ci_low, 2),
@@ -1570,41 +1617,6 @@ df_3 %>% kable(escape = F, row.names = F, col.names = linebreak(c("Indicator", "
 ```
 
 #### Relative risk ratios
-
-As for Birmingham, the above results were also expressed as relative risk ratios for presentation in the public-facing dashboards. The method for doing so was exactly the same as for the Birmingham statistics above, and is provided in the code below.
-
-```{r include = TRUE, echo = TRUE}
-rr_from_df <- function(df, name){
-  # function takes dfs made earlier, transforms in matrices, and creates risk
-  # ratios and associated confidence intervals
-  # 'name' is the name of the indicator
-  mat <- matrix(c(df[2,2],
-                  df[2,1],
-                  df[1,2],
-                  df[1,1]), 2, 2)
-  df_out <- data.frame("indicator" = name,
-                     "rr" = riskratio(mat)[["measure"]][2,1],
-                     "ci_low" = riskratio(mat)[["measure"]][2,2],
-                     "ci_upp" = riskratio(mat)[["measure"]][2,3])
-  return(df_out)
-}
-
-rr_gld <- rr_from_df(gld_df, "Good level of development at age 5 (2018-2019)")
-rr_gcse <- rr_from_df(gcse_df, "Level 4+ GCSE Maths & English (2018-2019)")
-rr_employment <- rr_from_df(employment_df, "Employment rate (2020-2021)")
-rr_homeless <- rr_from_df(homeless_df, "Statutorily homeless or at risk (2020-2021)")
-rr_stop_search <- rr_from_df(stop_search_df, "Police Stop and Search (2020-2021)")
-rr_cla <- rr_from_df(cla_df, "Children looked after by local authority (2018-2019)")
-
-rr_df <- rbind(rr_gld,
-               rr_gcse,
-               rr_employment,
-               rr_homeless,
-               rr_stop_search,
-               rr_cla)
-```
-
-This procedure yielded the statistics presented in the figure and table below.
 
 ```{r rr_plot_2, include = TRUE, echo = FALSE}
 # test rescaling below 1, hrrizontal orientation , without caption
@@ -1678,7 +1690,7 @@ ggplot(rr_df_2, aes(indicator, rr)) +
 ```{r include = TRUE, echo = FALSE}
 # table with rrS and CIS
 
-rr_df_3 <- rr_df %>%
+rr_df_3 <- rr_df[,-c(ncol(rr_df))] %>%
   mutate(
     rr = round(rr, 2),
     ci_low = round(ci_low, 2),
@@ -1688,7 +1700,7 @@ rr_df_3 <- rr_df_3[order(-c(rr_df_3$rr)),]
 
 rr_df_3 %>% kable("html", 
                   escape = F, 
-                  row.names = F, col.names = linebreak(c("Indicator", "Relative risk", "Lower confidence interval (95%)", "Upper confidence interval (95%)")), caption = "Relative risk and confidence intervals corresponding to the above plot") %>% kable_styling(full_width = F)
+                  row.names = F, col.names = linebreak(c("Indicator", "Relative risk ratio", "Lower confidence<br>interval (95%)", "Upper confidence<br>interval (95%)")), caption = "Relative risk ratios and confidence intervals corresponding to the above plot") %>% kable_styling(full_width = F)
 
 ```
 
