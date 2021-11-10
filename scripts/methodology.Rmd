@@ -4,15 +4,15 @@ title: |
   | Methodology and Results
 date: "November 2021"
 output:
-  word_document:
-    reference_docx: styles.docx
-    toc: yes
-    toc_depth: '4'
   html_document:
     toc: yes
     toc_depth: '4'
     df_print: paged
     code_folding: hide
+  word_document:
+    reference_docx: styles.docx
+    toc: yes
+    toc_depth: '4'
 always_allow_html: yes
 bibliography: ors_rrs.bib
 link-citations: yes
@@ -22,9 +22,8 @@ link-citations: yes
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(warning = FALSE)
 knitr::opts_chunk$set(message = FALSE)
-options(scipen = 0)
-options(kableExtra.auto_format = FALSE)
-
+options(scipen = 100)
+options(kableExtra.auto_format = TRUE)
 ```
 
 ```{r include = TRUE, echo = FALSE}
@@ -47,12 +46,13 @@ library(mapview)
 library(gmodels)
 library(tidyverse)
 library(epitools)
+library(forcats)
 ```
 
 
 # Data
 
-The aim was to produce for Birmingham and Haringey the same set of indicators implemented in the current Lambeth dashboard. It has not yet been possible to acquire data for Birmingham and Haringey relating to the mental health indicators that are included in the Lambeth dashboard. The table below lists the indicators included in the Haringey and Birmingham dashboards, and the sources of their data. 
+The aim was to produce for Birmingham and Haringey the same set of indicators implemented in the current [Lambeth dashboard](https://lambeth.blackthrive.org/shared-measurement-system/). It has not yet been possible to acquire data for Birmingham and Haringey relating to the mental health indicators that are included in the Lambeth dashboard. As our relationships with relevant public health authorities develop, we aim to update these dashboards with health-related indicators. The table below lists the indicators presently included in the Haringey and Birmingham dashboards, and the sources of their data. 
 
 ```{r echo = FALSE}
 sources_df <- data.frame("Indicator" = c("Good level of development",
@@ -101,7 +101,7 @@ Below each indicator is briefly described, as well as how it was sourced and str
 
 This indicator describes the number of children aged 4-5 years old who reach a “Good Level of Development” (GLD), defined as the achievement of expected level of development for Early Learning Goals and literacy and mathematics. 
 
-Data for this indicator were acquired from the *Early Years Foundation Stage Profile results: 2018-2019* produced by the Department for Education. This data provides the number of children reaching GLD and the total number of pupils according to the ethnic categories Asian, Black, Chinese, Mixed, and White. Subsets of this dataset were produced for Haringey and Birmingham by filtering the data based on the following criteria:
+Data for this indicator were acquired from the *Early Years Foundation Stage Profile results: 2018-2019* produced by the Department for Education. This data provides the number of children reaching GLD and the total number of pupils according to the "ethnic" categories Asian, Black, Chinese, Mixed, and White. Subsets of this dataset were produced for Haringey and Birmingham by filtering the data based on the following criteria:
 
 ```{r echo = FALSE}
 df <- data.frame("Variable name" = c("la_name","characteristic","time_period"),
@@ -112,7 +112,7 @@ df %>% kable(col.names = c("Variable name","Value")) %>% kable_styling(full_widt
 
 ## Pupils achieving at least Level 4 in GCSE Maths and English
 
-This indicator describes the number of pupils achieving at least Level 4 in GCSE Maths and English. Data were acquired from *Key Stage 4 performance 2019/20*, produced by the Department for Education. The variables of interest were total number of pupils (*t_pupils*), total number achieving at least Level 4 (*t_l2basics_94*), and percentage achieving at least Level 4 (*pt_l2basics_94*). Subsets of this data were produced for Haringey and Birmingham by filtering the data according to the following criteria:
+Data for the number of pupils achieving at least Level 4 in GCSE Maths and English were acquired from *Key Stage 4 performance 2019/20*, produced by the Department for Education. The variables of interest in this dataset were total number of pupils (*t_pupils*), total number achieving at least Level 4 (*t_l2basics_94*), and percentage achieving at least Level 4 (*pt_l2basics_94*). Subsets of this data were produced for Haringey and Birmingham by filtering the data according to the following criteria:
 
 ```{r echo = FALSE}
 df <- data.frame("Variable name" = c("la_name","breakdown"),
@@ -166,7 +166,7 @@ This data provides a *numerator*, which is the total number in employment, and a
 
 ## Rate of Police Stop and Search {.tabset}
 
-The procedure for Stop and Search data differed by local authority. For Haringey, Stop and Search data were acquired via the Metropolitan Police Stop and Search Dashboard data (published by the Metropolitan Police Service). Data for just Haringey was acquired by filtering the dataset by the variable *Borough of Stop*. For the purposes of the present analysis, an individual's ethnicity was taken as the ethnicity attributed to the individual by the officer (variable name *EA Group*). The time period this data covered was the 12 months to the end of August 2021.
+The procedure for Stop and Search data differed by local authority. For Haringey, Stop and Search data were acquired via the Metropolitan Police Stop and Search Dashboard (published by the Metropolitan Police Service) by filtering the dataset by the variable *Borough of Stop*. For the purposes of the present analysis, an individual's ethnicity was taken as the ethnicity attributed to the individual by the officer (variable name *EA Group*). The time period this data covered was the 12 months to the end of August 2021.
 
 For Birmingham, the Police API (published by the Single Online Home National Digital Team) was used to query Stop and Search data. To do this, it was first necessary to define the area of Birmingham using latitude and longitude coordinates. Coordinates of the city boundary were acquired from https://mapit.mysociety.org/area/2514.html. This provided 3634 coordinate points that define the area of Birmingham, as below: 
 
@@ -319,7 +319,7 @@ This data was supplemented by population estimates data for Haringey and Birming
 
 ## Households that are statutorily homeless or at risk of becoming homeless
 
-This indicator describes the number of households who are owed prevention or relief duty, meaning that they are statutorily homeless or at risk of being so. The data were acquired from *Live tables on homelessness; Detailed authority level tables: Financial year 2020-21*, produced by the Department for Levelling Up, Housing, and Communities and the Minstry of Housing, Communities, and Local Government). The subset used for the current analysis is *Table A8: Ethnicity of main applicants assessed as owed a prevention or relief duty by local authority 2020-21 financial year*. From this table, I selected the data corresponding to the Black and White populations of Haringey and Birmingham.
+This indicator describes the number of households who are owed prevention or relief duty, meaning that they are statutorily homeless or at risk of being so. The data were acquired from *Live tables on homelessness; Detailed authority level tables: Financial year 2020-21*, produced by the Department for Levelling Up, Housing, and Communities). The subset used for the current analysis is *Table A8: Ethnicity of main applicants assessed as owed a prevention or relief duty by local authority 2020-21 financial year*. From this table, I selected the data corresponding to the Black and White populations of Haringey and Birmingham.
 
 # Analysis and Results
 
@@ -1041,8 +1041,8 @@ ggplot(rr_df_2, aes(indicator, rr)) +
   geom_text(x = nrow(rr_df) + 1.5, y = -1*reduction_factor*0.9 + (reduction_factor*0.1), label = "Less likely", colour = "black", size = 3.5, hjust = 0) +
   #geom_text(size = 3, nudge_x = -0.3, nudge_y = 0, aes(x = indicator,label = paste("rr =", round(original_rr, 2)),hjust = 0)) +
   geom_text(size = 3, nudge_x = -0.35, nudge_y = 0, aes(x = indicator,label = paste(round(original_rr, 2),"x", sep=""),hjust = 0.5)) +
-  ggtitle("The likelihood of outcomes for the Black population \ncompared to the White population")
-  #labs(caption = "Note. rr = Odds ratio; bars represent 95% confidence interval")
+  ggtitle("The likelihood of outcomes for the Black population \ncompared to the White population") +
+  labs(caption = "Note. Numbers represent the relative risk ratio")
 #dev.off()
 #ggsave(filename = "../images/rr_plot.png", width = 10, height = 6)
 ```
@@ -1635,13 +1635,15 @@ ggplot(rr_df_2, aes(indicator, rr)) +
   geom_hline(yintercept = 0, colour = bt_orange, size = 1) +
   geom_point(size = 2) +
   geom_errorbar(aes(ymin = ci_low, ymax = ci_upp), width = 0.2) +
-  scale_y_continuous(expand = c(0, 0), limits = c(reduction_factor * -1, reduction_factor), breaks = c((reduction_factor * -1) * 0.9, 0.5 * reduction_factor - reduction_factor, 0.75 * reduction_factor - reduction_factor, 0, 1, 2), labels = c(
+  scale_y_continuous(expand = c(0, 0), limits = c(reduction_factor * -1, reduction_factor), breaks = c((reduction_factor * -1) * 0.9, 0.5 * reduction_factor - reduction_factor, 0.75 * reduction_factor - reduction_factor, 0, 1, 3, 5, 7), labels = c(
     "10x less likely",
     "Half as likely",
     "3/4 as likely",
     "Just as likely",
     "2x more likely",
-    "3x more likely")) +
+    "4x more likely",
+    "6x more likely",
+    "8x more likely")) +
   expand_limits(x = c(0,nrow(rr_df) + 2)) + # for expanding discrete scale
   ylab("Likelihood of outcome compared to White ethnicity") +
   coord_flip() +
@@ -1667,8 +1669,8 @@ ggplot(rr_df_2, aes(indicator, rr)) +
   geom_text(x = nrow(rr_df) + 1.5, y = -1*reduction_factor*0.9 + (reduction_factor*0.1), label = "Less likely", colour = "black", size = 3.5, hjust = 0) +
   #geom_text(size = 3, nudge_x = -0.3, nudge_y = 0, aes(x = indicator,label = paste("rr =", round(original_rr, 2)),hjust = 0)) +
   geom_text(size = 3, nudge_x = -0.35, nudge_y = 0, aes(x = indicator,label = paste(round(original_rr, 2),"x", sep=""),hjust = 0.5)) +
-  ggtitle("The likelihood of outcomes for the Black population \ncompared to the White population")
-  #labs(caption = "Note. rr = Odds ratio; bars represent 95% confidence interval")
+  ggtitle("The likelihood of outcomes for the Black population \ncompared to the White population") +
+  labs(caption = "Note. Numbers represent the relative risk ratio")
 #dev.off()
 #ggsave(filename = "../images/rr_plot.png", width = 10, height = 6)
 ```
@@ -1700,7 +1702,7 @@ The child population estimates drawn from the Census 2011 that supplemented the 
 
 # Authors 
 
-This document was produced by the Research team at Black Thrive Global:
+This document was produced by the Research Team at Black Thrive Global:
 
 **Jolyon Miles-Wilson**
 
