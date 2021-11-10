@@ -24,6 +24,7 @@ knitr::opts_chunk$set(warning = FALSE)
 knitr::opts_chunk$set(message = FALSE)
 options(scipen = 100)
 options(kableExtra.auto_format = TRUE)
+
 ```
 
 ```{r include = TRUE, echo = FALSE}
@@ -165,9 +166,7 @@ This data provides a *numerator*, which is the total number in employment, and a
 
 ## Rate of Police Stop and Search {.tabset}
 
-The procedure for Stop and Search data differed by local authority. For Haringey, Stop and Search data were acquired via the Metropolitan Police Stop and Search Dashboard (published by the Metropolitan Police Service) by filtering the dataset by the variable *Borough of Stop*. For the purposes of the present analysis, an individual's ethnicity was taken as the ethnicity attributed to the individual by the officer (variable name *EA Group*). The time period this data covered was the 12 months to the end of August 2021.
-
-For Birmingham, the Police API (published by the Single Online Home National Digital Team) was used to query Stop and Search data. To do this, it was first necessary to define the area of Birmingham using latitude and longitude coordinates. Coordinates of the city boundary were acquired from https://mapit.mysociety.org/area/2514.html. This provided 3634 coordinate points that define the area of Birmingham, as below: 
+The procedure for Stop and Search data differed by local authority. For Birmingham, the Police API (published by the Single Online Home National Digital Team) was used to query Stop and Search data. To do this, it was first necessary to define the area of Birmingham using latitude and longitude coordinates. Coordinates of the city boundary were acquired from https://mapit.mysociety.org/area/2514.html. This provided 3634 coordinate points that define the area of Birmingham, as below: 
 
 ```{r read_coords}
 # Get coordinates of Birmingham area
@@ -313,8 +312,47 @@ appearance_freq_data %>% kbl(col.names = c("Officer-defined ethnicity", "Count",
 ```{r echo = FALSE}
 self_defined_freq_data %>% kbl(col.names = c("Self-defined ethnicity", "Count","Percentage")) %>% kable_styling(full_width = F)
 ```
+## {.tabset}
 
-This data was supplemented by population estimates data for Haringey and Birmingham from the 2021 *Annual Population Survey*.
+```{r include = TRUE, echo = FALSE}
+data <- read.csv("../data/haringey_stop_and_search_2020_2021_v2.csv")
+appearance_freq_data <- data %>%
+  group_by(Ethnic.Appearance.Code) %>%
+  summarise(
+    n = n() # count frequencies
+  ) %>%
+  mutate(
+    percentage = round(100 * (n / sum(n)), 2)
+  )
+appearance_freq_data$Ethnic.Appearance.Code[1] <- "NULL"
+haringey_ethnicity_recorded <- 100 - sum(appearance_freq_data$percentage[1:2])
+```
+
+For Haringey, Stop and Search data were acquired via the Metropolitan Police Stop and Search Dashboard (published by the Metropolitan Police Service) by filtering the dataset by the variable *Borough of Stop*. The time period this data covered was the 12 months to the end of August 2021. The completeness of the officer-defined ethnicity variable (*Ethnic.Appearance.Code*) in the Haringey data set was better than for Birmingham, with `r haringey_ethnicity_recorded`% of records having a non-null or non-Unknown value. It was therefore technically possible to use officer-defined ethnicity as the ethnicity variable in the Haringey analysis. However, for purposes of comparison with the Birmingham statistics, self-defined ethnicity (aggregated into broad categories; variable name *SDE.Group*) was used in the present Haringey analysis. The tables below show the counts and percentages for officer- and self-defined ethnicity in Haringey.
+
+### Officer-defined ethnicity 
+
+```{r include = TRUE, echo = FALSE}
+appearance_freq_data %>% kbl(col.names = c("Officer-defined ethnicity", "Count", "Percentage")) %>% kable_styling(full_width = F)
+```
+
+### Self-defined ethnicity 
+
+```{r include = TRUE, echo = FALSE}
+self_defined_freq_data <- data %>%
+  group_by(SDE.Group) %>%
+  summarise(
+    n = n() # count frequencies
+  ) %>%
+  mutate(
+    percentage = round(100 * (n / sum(n)), 2)
+  )
+self_defined_freq_data %>% kbl(col.names = c("Officer-defined ethnicity", "Count", "Percentage")) %>% kable_styling(full_width = F)
+```
+
+## {.unlisted .unnumbered}
+
+All Stop and Search data were supplemented by population estimates data for Haringey and Birmingham from the 2021 *Annual Population Survey*.
 
 ## Households that are statutorily homeless or at risk of becoming homeless
 
@@ -368,8 +406,9 @@ white <- data.frame("white" = c("gld_number" = total_data["White", "gld_number"]
 bw_mat <- as.matrix(cbind(black, white)) # combine black and white into one matrix
 gld_df <- as.data.frame(bw_mat) # save df
 
-xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T) # save xtab
 rr <- rr_from_df(gld_df, "Good level of development at age 5 (2018-2019)") # get risk ratio
+xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T) # save xtab
+
 ```
 
 
@@ -434,8 +473,9 @@ bw_mat <- as.matrix(cbind(black, white))
 gcse_df <- as.data.frame(bw_mat) # save df
 
 # run stats
-xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
 rr <- rr_from_df(gcse_df, "Level 4+ GCSE Maths & English (2018-2019)") # get risk ratio
+xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
+
 ```
 
 
@@ -490,8 +530,9 @@ bw_mat <- as.matrix(cbind(black, white))
 cla_df <- as.data.frame(bw_mat) # save df
 
 # run analysis
-xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
 rr <- rr_from_df(cla_df, "Children looked after by local authority (2018-2019)") # risk ratio
+xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
+
 ```
 
 
@@ -552,10 +593,11 @@ bw_mat <- as.matrix(cbind(black, white))
 
 employment_df <- as.data.frame(bw_mat) # save df
 
+rr <- rr_from_df(employment_df, "Employment rate (2020-2021)") # risk ratio
+
 # run analysis
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
 #chisq.test(bw_mat) double check result with chisq.test function
-rr <- rr_from_df(employment_df, "Employment rate (2020-2021)") # risk ratio
 ```
 
 
@@ -653,9 +695,10 @@ white <- data.frame("White" = c("ss" = self_defined_freq_data["White", "n"], "no
 bw_mat <- as.matrix(cbind(black, white))
 
 stop_search_df <- as.data.frame(bw_mat) # save df
+rr <- rr_from_df(stop_search_df, "Police Stop and Search (2020-2021)") # risk ratio
+
 # run analysis
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
-rr <- rr_from_df(stop_search_df, "Police Stop and Search (2020-2021)") # risk ratio
 ```
 
 
@@ -722,9 +765,10 @@ white <- data.frame("white" = c("homeless" = total_data["White", "number_homeles
 bw_mat <- as.matrix(cbind(black, white))
 
 homeless_df <- as.data.frame(bw_mat) # save df
+rr <- rr_from_df(homeless_df, "Statutorily homeless or at risk (2020-2021)") # risk ratio
+
 # run analysis
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
-rr <- rr_from_df(homeless_df, "Statutorily homeless or at risk (2020-2021)") # risk ratio
 ```
 
 
@@ -1103,8 +1147,9 @@ white <- data.frame("white" = c("gld_number" = total_data["White", "gld_number"]
 bw_mat <- as.matrix(cbind(black, white)) # combine black and white into one matrix
 gld_df <- as.data.frame(bw_mat) # save df
 
-xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T) # save xtab
 rr <- rr_from_df(gld_df, "Good level of development at age 5 (2018-2019)") # risk ratio
+
+xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T) # save xtab
 ```
 
 
@@ -1171,9 +1216,10 @@ white <- data.frame("white" = c("gcse" = total_data["White", "total_4_plus"], "n
 bw_mat <- as.matrix(cbind(black, white))
 gcse_df <- as.data.frame(bw_mat) # save df
 
+rr <- rr_from_df(gcse_df, "Level 4+ GCSE Maths & English (2018-2019)") # risk ratio
+
 # run stats
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
-rr <- rr_from_df(gcse_df, "Level 4+ GCSE Maths & English (2018-2019)") # risk ratio
 ```
 
 
@@ -1226,9 +1272,10 @@ white <- data.frame("white" = c("cla" = total_data["White", "cla"], "not_cla" = 
 bw_mat <- as.matrix(cbind(black, white))
 cla_df <- as.data.frame(bw_mat) # save df
 
+rr <- rr_from_df(cla_df, "Children looked after by local authority (2018-2019)") # risk ratio
+
 # run analysis
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
-rr <- rr_from_df(cla_df, "Children looked after by local authority (2018-2019)") # risk ratio
 ```
 
 
@@ -1288,9 +1335,10 @@ white <- data.frame("white" = c("employed" = total_data["white", "numerator"], "
 bw_mat <- as.matrix(cbind(black, white))
 employment_df <- as.data.frame(bw_mat) # save df
 
+rr <- rr_from_df(employment_df, "Employment rate (2020-2021)") # risk ratio
+
 # run analysis
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
-rr <- rr_from_df(employment_df, "Employment rate (2020-2021)") # risk ratio
 ```
 
 
@@ -1329,8 +1377,8 @@ ggplot(total_data, aes(ethnicity, percentage)) +
 
 ### Rate of Police Stop and Search
 
-```{r}
-# stop and search
+```{r include = FALSE, echo = FALSE}
+# stop and search - officer-defined
 data <- read.csv("../data/haringey_stop_and_search_2020_2021_v2.csv")
 
 # officer-defined ethnicity
@@ -1351,7 +1399,7 @@ appearance_freq_data <- data %>%
     percentage = 100 * (n/pop),
     not_ss = pop - n
   )
-  
+
 appearance_freq_data <- as.data.frame(appearance_freq_data)
 row.names(appearance_freq_data) <- appearance_freq_data$ethnicity
 
@@ -1361,9 +1409,49 @@ white <- data.frame("White" = c("ss" = appearance_freq_data["White", "n"], "not_
 bw_mat <- as.matrix(cbind(black, white))
 stop_search_df <- as.data.frame(bw_mat) # save df
 
+rr <- rr_from_df(stop_search_df, "Police Stop and Search (2020-2021)")
+
 # run analysis
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
+```
+
+
+```{r include = TRUE, echo = TRUE}
+# stop and search - self-defined
+data <- read.csv("../data/haringey_stop_and_search_2020_2021_v2.csv")
+
+# self-defined ethnicity
+self_defined_freq_data <- data %>%
+  group_by(SDE.Group) %>%
+  summarise(
+    n = n() # count frequencies
+  ) %>%
+  rename(
+    ethnicity = SDE.Group
+  ) %>%
+  mutate(
+    # add population estimates
+    # population estimates taken from APS apr2020-mar2021 
+    # Asian population = sum of Indian and Pakistani/Bangladeshi pops
+    # c(Asian, Black, Other, White)
+    pop = c(5800, 29200, 18400, 161400),
+    percentage = 100 * (n/pop),
+    not_ss = pop - n
+  )
+
+self_defined_freq_data <- as.data.frame(self_defined_freq_data)
+row.names(self_defined_freq_data) <- self_defined_freq_data$ethnicity
+
+# prepare xtabs
+black <- data.frame("Black" = c("ss" = self_defined_freq_data["Black", "n"], "not_ss" = self_defined_freq_data["Black", "not_ss"]))
+white <- data.frame("White" = c("ss" = self_defined_freq_data["White", "n"], "not_ss" = self_defined_freq_data["White", "not_ss"]))
+bw_mat <- as.matrix(cbind(black, white))
+stop_search_df <- as.data.frame(bw_mat) # save df
+
 rr <- rr_from_df(stop_search_df, "Police Stop and Search (2020-2021)")
+
+# run analysis
+xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
 ```
 
 
@@ -1379,10 +1467,10 @@ if(p < .001){
 }
 ```
 
-The results indicate that in the 12 months to August 2021, there was a significant difference between Black and White individuals in the odds of being stopped and searched by Police, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of a Black individual being stopped and searched by police were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds of a White individual being stopped and searched (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2], 2)`). The relative risk ratio for Black individuals compared to White individuals was `r round(rr$rr,2)` (95% CI = `r round(rr$ci_low,2)` - `r round(rr$ci_upp,2)`), indicating that Black individuals were `r round(100 * (rr$rr), 0) - 100`% (i.e., `r round(rr$rr,2)` times) more likely than White individuals to be stopped and searched by Police. The plot below shows that `r round(appearance_freq_data["Black","percentage"],2)`% of Black individuals in Haringey were subject to Police Stop and Search, compared to `r round(appearance_freq_data["White","percentage"],2)`% of White individuals. 
+The results indicate that in the 12 months to August 2021, there was a significant difference between Black and White individuals in the odds of being stopped and searched by Police, $\chi^{2}$(1, *N* = `r sum(bw_mat)`) = `r round(xtab[["chisq"]][["statistic"]][["X-squared"]],2)`, *p* `r p`. The odds of a Black individual being stopped and searched by police were `r round(xtab[["fisher.ts"]][["estimate"]][["odds ratio"]],2)` times the odds of a White individual being stopped and searched (95% CI = `r round(xtab[["fisher.ts"]][["conf.int"]][1],2)` - `r round(xtab[["fisher.ts"]][["conf.int"]][2], 2)`). The relative risk ratio for Black individuals compared to White individuals was `r round(rr$rr,2)` (95% CI = `r round(rr$ci_low,2)` - `r round(rr$ci_upp,2)`), indicating that Black individuals were `r round(100 * (rr$rr), 0) - 100`% (i.e., `r round(rr$rr,2)` times) more likely than White individuals to be stopped and searched by Police. The plot below shows that `r round(self_defined_freq_data["Black","percentage"],2)`% of Black individuals in Haringey were subject to Police Stop and Search, compared to `r round(self_defined_freq_data["White","percentage"],2)`% of White individuals. 
 
 ```{r echo = FALSE}
-plot_data <- subset(appearance_freq_data, ethnicity == "Black" | ethnicity == "White")
+plot_data <- subset(self_defined_freq_data, ethnicity == "Black" | ethnicity == "White")
 
 ggplot(plot_data, aes(ethnicity, percentage)) + 
   geom_col(fill = "#ff9000", colour = "black", width = .5) +
@@ -1432,9 +1520,10 @@ white <- data.frame("white" = c("homeless" = total_data["White", "number_homeles
 bw_mat <- as.matrix(cbind(black, white))
 homeless_df <- as.data.frame(bw_mat) # save df
 
+rr <- rr_from_df(homeless_df, "Statutorily homeless or at risk (2020-2021)") # risk ratio
+
 # run analysis
 xtab <- CrossTable(bw_mat, fisher = T, chisq = T, expected = T)
-rr <- rr_from_df(homeless_df, "Statutorily homeless or at risk (2020-2021)") # risk ratio
 ```
 
 
@@ -1711,6 +1800,8 @@ A notable limitation of the present analyses is the coarseness of the ethnicity 
 All the analyses here presented do not control for other factors that may be important for outcomes, such as age, sex, and income. Future versions of the Shared Measurement System should aim to take account of these potentially relevant factors in order to provide a more accurate picture of the inequality experienced by the Black population.
 
 The child population estimates drawn from the Census 2011 that supplemented the children looked after by the local authority in Birmingham are very outdated, which has the effect of reducing the accuracy of the statistics associated with this indicator. 
+
+In relation to the Stop and Search findings, assuming the goal of the analysis is to investigate racism, it may be more appropriate to use officer-defined ethnicity rather than self-defined ethnicity, since unequal treatment stems from *perceptions* of ethnic categories (though this will often correlate with an individual's self-defined ethnicity). As has been detailed in the ***Data*** section, an analysis based on officer-defined ethnicity was not possible for Birmingham, and for ease of comparison the Haringey analysis was not based on officer-defined ethnicity either. This is another limitation of the present report.
 
 # Authors 
 
