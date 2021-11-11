@@ -65,7 +65,8 @@ sources_df <- data.frame("Indicator" = c("Good level of development",
                                     "Homeless or at risk of becoming homeless",
                                     "Adult population",
                                     "Child population: Birmingham",
-                                    "Child population: Haringey"
+                                    "Child population: Haringey",
+                                    "Birmingham area coordinates"
                                     ),
                          "Date range" = c("2018-2019 academic year",
                                           "2019-2020 academic year",
@@ -76,7 +77,8 @@ sources_df <- data.frame("Indicator" = c("Good level of development",
                                           "2020-2021 financial year",
                                           "2021",
                                           "2011",
-                                          "2019"),
+                                          "2019",
+                                          ""),
                          "Source" = c("[Early Years Foundation Stage Profile results](https://www.gov.uk/government/statistics/early-years-foundation-stage-profile-results-2018-to-2019)",
                                  "[Key Stage 4 performance](https://explore-education-statistics.service.gov.uk/find-statistics/key-stage-4-performance-revised#dataDownloads-1)",
                                  "[Children looked after in England including adoption](https://www.gov.uk/government/statistics/children-looked-after-in-england-including-adoption-2018-to-2019)",
@@ -87,7 +89,8 @@ sources_df <- data.frame("Indicator" = c("Good level of development",
                                  "[Live tables on homelessness; Detailed local authority level tables](https://www.gov.uk/government/statistical-data-sets/live-tables-on-homelessness#homelessness-summary-local-authority-level-tables)",
                                  "[Annual Population Survey](https://www.nomisweb.co.uk/datasets/apsnew)",
                                  "[Census 2011](https://www.nomisweb.co.uk/census/2011/dc2101ew)",
-                                 "[Greater London Authority Ethnic group population projections](https://data.london.gov.uk/dataset/ethnic-group-population-projections)")
+                                 "[Greater London Authority Ethnic group population projections](https://data.london.gov.uk/dataset/ethnic-group-population-projections)",
+                                 "[MapIt by mySociety](https://mapit.mysociety.org/area/2514.html)")
 )
                     
 
@@ -1811,6 +1814,6 @@ This document was produced by the Research Team at Black Thrive Global:
 
 **Dr Celestin Okoroji**
 
-Any questions, comments, and/or feedback on any aspect of this analysis are highly appreciated. Please contact Jolyon directly at jolyon.miles-wilson@blackthrive.org.
+Any questions, comments, and/or feedback on any aspect of this analysis are greatly appreciated. Please contact Jolyon directly at jolyon.miles-wilson@blackthrive.org.
 
 # References
