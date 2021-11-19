@@ -2565,7 +2565,7 @@ data <- read.csv("../data/Stops_LDS_Extract_12MonthsToEnd_202108.csv")
 
 data <- subset(data, Borough.of.Stop == "Lambeth") # subset to Lambeth
 
-# officer-defined ethnicity
+# self-defined ethnicity
 self_defined_freq_data <- data %>%
   group_by(SDE.Group) %>%
   summarise(
@@ -3390,6 +3390,6 @@ Any questions, comments, and/or feedback on any aspect of this analysis are grea
 
 # Supplementary materials
 
-The code and data used to create this methodology paper are available on Github [here](https://github.com/JolyonJoseph/sms_methodology).
+The code and data used to create this methodology paper are available on Github [here](https://github.com/BlackThrive/sms_methodology).
 
 # References
