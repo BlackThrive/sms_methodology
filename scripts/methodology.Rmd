@@ -10,6 +10,7 @@ output:
     toc_depth: '4'
     df_print: paged
     code_folding: hide
+    css: style.css
   word_document:
     reference_docx: styles.docx
     toc: yes
@@ -47,7 +48,9 @@ library(leaflet) # for mapping
 library(mapview) # for saving maps
 library(gmodels) # for CrossTable
 library(epitools) # for riskratio
-library(forcats) # for factor reduction
+library(jsonify)
+library(ggrepel)
+library(httr)
 ```
 
 
