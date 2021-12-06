@@ -44,7 +44,7 @@ The scripts use the following R packages. These need to be installed using <b>in
 
 ### Data
 
-**data/Stops_LDS_Extract_12MonthsToEnd_202109.zip**: Stop and Search data for Lambeth. csv file within eeds to be unzipped to data folder
+**data/Stops_LDS_Extract_12MonthsToEnd_202109.zip**: Stop and Search data for Lambeth. csv file within needs to be unzipped to data folder
 
 **data/lambeth_cla_2019.csv**: Data for Children Looked After indicator
 
