@@ -5,7 +5,7 @@
   </a>
   </div>
   
-# Black Thrive Shared Measurement System Methodology paper
+# Black Thrive Shared Measurement System Methodology
  
 ## Overview
 
